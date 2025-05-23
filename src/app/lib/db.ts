@@ -16,5 +16,5 @@ clientPromise = global._mongoClientPromise;
 
 export async function connectToDatabase() {
   const client = await clientPromise;
-  return client.db(); // defaults to the DB from the URI
+  return client.db('TrainerBookings'); // ✅ use your real DB name
 }
