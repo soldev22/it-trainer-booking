@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { connectToDatabase } from '../../../lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/app/lib/db'; // fix path if needed
 import bcrypt from 'bcryptjs';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
