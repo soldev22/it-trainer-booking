@@ -22,22 +22,20 @@ function CalendarContent() {
   const baseDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
 
   useEffect(() => {
-  async function fetchBookings() {
-    try {
-      const res = await fetch('/api/bookings?fromToday=true');
-      if (!res.ok) throw new Error(`Failed to load bookings: ${res.statusText}`);
-      const data = await res.json();
-      setBookings(data);
-    } catch (err) {
-      console.error('Failed to load bookings:', err);
-      setBookings([]); // fallback to empty array
-    } finally {
-      setLoading(false);
+    async function fetchBookings() {
+      try {
+        const res = await fetch('/api/bookings?fromToday=true');
+        if (!res.ok) throw new Error('Failed to load bookings');
+        const data = await res.json();
+        setBookings(data);
+      } catch (err) {
+        console.error('Failed to load bookings:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-  fetchBookings();
-}, [monthOffset]);
-
+    fetchBookings();
+  }, [monthOffset]);
 
   const openModal = (date: string) => {
     setSelectedDate(date);
@@ -59,12 +57,12 @@ function CalendarContent() {
         }),
       });
       if (!res.ok) throw new Error('Failed to save booking');
+      const updated = await res.json();
+      setBookings([...bookings, updated]);
       setShowModal(false);
       setCourseTitle('');
       setNumDays(1);
       setTimeOfDay('full');
-      const updated = await res.json();
-      setBookings([...bookings, updated]);
     } catch (err) {
       console.error(err);
     }
@@ -85,8 +83,11 @@ function CalendarContent() {
       const dateStr = new Date(current.getTime() - current.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
       const existingBooking = bookings.find(b => {
-        const bDate = new Date(b.startDate);
-        return dateStr >= b.startDate && dateStr < new Date(bDate.setDate(bDate.getDate() + b.numDays)).toISOString().split('T')[0];
+        const bStart = new Date(b.startDate);
+        const bEnd = new Date(bStart);
+        bEnd.setDate(bEnd.getDate() + b.numDays);
+        const currentDate = new Date(dateStr);
+        return currentDate >= bStart && currentDate < bEnd;
       });
 
       const canEdit = session?.user?.email === existingBooking?.email || session?.user?.email === 'mike@solutionsdeveloped';
@@ -95,10 +96,21 @@ function CalendarContent() {
         <div
           key={dateStr}
           className={`border p-2 text-center ${isCurrentMonth ? 'bg-light' : 'bg-white text-muted'}`}
-          style={{ height: '100px', cursor: isWeekday && isCurrentMonth ? 'pointer' : 'default', backgroundColor: existingBooking ? (canEdit ? '#ffc107' : '#ccc') : undefined }}
+          style={{
+            height: '100px',
+            cursor: isWeekday && isCurrentMonth ? 'pointer' : 'default',
+            backgroundColor: existingBooking ? (canEdit ? '#ffc107' : '#ccc') : undefined,
+          }}
           onClick={() => isWeekday && isCurrentMonth && (!existingBooking || canEdit) && openModal(dateStr)}
         >
-          <small>{current.getDate()}</small>
+          <>
+  <small>{current.getDate()}</small>
+  {existingBooking && (
+    <div style={{ fontSize: '0.6rem', marginTop: '0.25rem' }}>
+      {existingBooking.courseTitle}
+    </div>
+  )}
+</>
         </div>
       );
     }
@@ -110,6 +122,9 @@ function CalendarContent() {
   return (
     <div className="container py-4">
       <h2>Booking Calendar</h2>
+      {session?.user?.email && (
+        <p className="text-muted">Logged in as: {session.user.email}</p>
+      )}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <Button variant="outline-primary" onClick={() => setMonthOffset(monthOffset - 1)}>Previous</Button>
         <h4 className="mb-0">{monthName}</h4>
